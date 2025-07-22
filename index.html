@@ -1,0 +1,48 @@
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/payment_service.dart';
+
+class HomeScreen extends StatelessWidget {
+  final products = FirebaseFirestore.instance.collection('products');
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Local Delivery")),
+      body: StreamBuilder(
+        stream: products.snapshots(),
+        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
+          var docs = snapshot.data!.docs;
+          return ListView.builder(
+            itemCount: docs.length,
+            itemBuilder: (context, index) {
+              var data = docs[index];
+              return Card(
+                child: ListTile(
+                  title: Text(data['name']),
+                  subtitle: Text("₹${data['price']}"),
+                  trailing: ElevatedButton(
+                    child: Text("Buy"),
+                    onPressed: () {
+                      PaymentService.startPayment(
+                        amount: data['price'] * 100,
+                        name: data['name'],
+                      );
+                      FirebaseFirestore.instance.collection('orders').add({
+                        'product': data['name'],
+                        'price': data['price'],
+                        'status': "Pending",
+                        'time': DateTime.now(),
+                      });
+                    },
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
